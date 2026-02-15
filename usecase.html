@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Äänestyssovellus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { 
+      background-color: #f8f9fa; 
+      color: #212529; 
+    }
+    
+    .sovellus { 
+      max-width: 800px; 
+      margin: 50px auto; }
+    
+    .card { 
+      background: white; 
+      border: none; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border-radius: 10px;
+    }
+
+    .navbar {
+      background-color: white;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .navbar-brand {
+      font-weight: bold;
+      color: #0d6efd;
+    }
+    .form-check-label {
+      cursor: pointer;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+
+<nav class="navbar navbar-light shadow-sm d-none" id="mainNav">
+  <div class="container">
+    <span class="navbar-brand">Äänestyssovellus</span>
+    <div class="ms-auto">
+      <span class="navbar-text me-3" id="userInfo"></span>
+      <button class="btn btn-outline-danger btn-sm" onclick="logout()">Kirjaudu ulos</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container sovellus">
+  <h2 class="mb-4 text-center">Äänestyssovellus</h2>
+
+  <div id="loginSection">
+    <div class="card p-4 shadow-sm" id="loginCard">
+      <h4 class="mb-3 text-center">Kirjaudu sisään</h4>
+      <input type="text" id="usernameInput" class="form-control mb-3" placeholder="Käyttäjätunnus">
+      <input type="password" id="passwordInput" class="form-control mb-3" placeholder="Salasana">
+      
+      <div class="p-3 my-3 bg-light rounded border text-center">
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="roleSelect" id="adminRole" value="admin" checked>
+          <label class="form-check-label" for="adminRole">Admin</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="roleSelect" id="userRole" value="user">
+          <label class="form-check-label" for="userRole">Käyttäjä</label>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 mb-2" onclick="login()">Kirjaudu</button>
+      <button class="btn btn-link w-100 btn-sm text-decoration-none" onclick="register()">Luo uusi tili</button>
+    </div>
+  </div>
+
+  <div class="card d-none mb-4" id="adminPanel">
+    <div class="card-body">
+      <h4>Luo uusi äänestys</h4>
+      <input id="pollQuestion" class="form-control mb-2" placeholder="Mitä kysytään?">
+      <input class="form-control mb-2 polloption" placeholder="Vaihtoehto 1">
+      <input class="form-control mb-2 polloption" placeholder="Vaihtoehto 2">
+      <input class="form-control mb-2 polloption" placeholder="Vaihtoehto 3">
+      <input class="form-control mb-2 polloption" placeholder="Vaihtoehto 4">
+      <button class="btn btn-success" onclick="createPoll()">Julkaise äänestys</button>
+    </div>
+  </div>
+
+  <div id="pollList" class="d-none"></div>
+
+</div>
+
+<script>
+  let polls = [];
+  let currentUser = null;
+  let users = [];
+
+  function register(){
+    const username = document.getElementById("usernameInput").value;
+    const password = document.getElementById("passwordInput").value;
+    const role = document.querySelector('input[name="roleSelect"]:checked').value;
+
+
+    if (!username  || !password){
+      alert("Syötä käyttäjänimi ja salasana");
+      return;
+    }
+
+    users.push({
+      username: username,
+      password: password,
+      role: role
+    });
+
+    alert("Käyttäjä rekisteröity")
+  }
+
+ function login(){
+    const username = document.getElementById("usernameInput").value;
+    const password = document.getElementById("passwordInput").value;
+
+     currentUser = null;
+
+    users.forEach(user => {
+      if(user.username === username && user.password === password){
+        currentUser = user;
+      }
+    });
+
+    if(!currentUser){
+      alert("Väärä käyttäjänimi tai salasana")
+      return;
+    }
+
+    
+    document.getElementById("loginSection").classList.add("d-none")
+    document.getElementById("mainNav").classList.remove("d-none")
+    document.getElementById("userInfo").textContent = "Käyttäjä: " + currentUser.username + " (" + currentUser.role + ")"
+
+    
+    if(currentUser.role === "admin"){
+      document.getElementById("adminPanel").classList.remove("d-none")
+    }
+
+    
+    updateUI();
+  }
+
+  function logout(){
+    currentUser = null
+    document.getElementById("mainNav").classList.add("d-none")
+    document.getElementById("loginSection").classList.remove("d-none")
+    document.getElementById("adminPanel").classList.add("d-none")
+    document.getElementById("pollList").classList.add("d-none")
+  }
+
+  let idcounter = 1;
+
+function createPoll() {
+  const questionText = document.getElementById("pollQuestion").value.trim();
+  const polloptions = document.querySelectorAll(".polloption");
+
+  const options = [];
+  
+  polloptions.forEach(i => {
+    const input = i.value.trim();
+    if (input !== "") {
+      console.log(input)
+      options.push(input);
+    }
+  });
+
+  if (questionText === "" || options.length < 2) {
+    alert("Lisää kysymys ja vähintään 2 vaihtoehtoa!");
+    return;
+  }
+
+  const votes = []
+  options.forEach(option => {
+    votes.push(0);
+  });
+
+  const newPoll = {
+    id: idcounter,
+    question: questionText,
+    options: options,
+    votes: votes
+  }
+
+  idcounter++
+  polls.push(newPoll);
+
+  document.getElementById("pollQuestion").value = "";
+  polloptions.forEach(i => i.value = "");
+  updateUI();
+}
+
+ function updateUI(){
+  pollList = document.getElementById("pollList");
+  pollList.innerHTML = "";
+  pollList.classList.remove("d-none");
+  
+  polls.forEach(poll => {
+    const maindiv = document.createElement("div");
+    maindiv.className = "card mb-4";
+
+    const divbody = document.createElement("div");
+    divbody.className = "card-body";
+    
+    const h5 = document.createElement("h5");
+    h5.textContent = poll.question;
+    divbody.appendChild(h5);
+
+   
+
+    
+    poll.options.forEach((option, index) => {
+      const radiobutton = document.createElement("input");
+      radiobutton.type = "radio";
+      radiobutton.name = "vote_" + poll.id;
+      radiobutton.value = index;
+      radiobutton.id = "vote_" + poll.id + "_" + index;
+
+      const optiondiv = document.createElement("div");
+      optiondiv.className = "form-check mb-2";
+      optiondiv.appendChild(radiobutton);
+      optiondiv.appendChild(document.createTextNode(" " + option)); 
+
+      divbody.appendChild(optiondiv);
+    });
+
+    
+    if(currentUser.role === "user"){
+      const resultsDiv = document.createElement("div");
+      resultsDiv.className = "mt-3 d-none";
+      resultsDiv.id = "results_" + poll.id;
+      divbody.appendChild(resultsDiv);
+    }
+    
+
+    buttondiv= document.createElement("div");
+    buttondiv.className = "mt-3"
+
+    if(currentUser.role === "admin"){
+      deletebutton = document.createElement("button");
+      deletebutton.className = "btn btn-danger btn-sm";
+      deletebutton.textContent = "Poista äänestys";
+
+      deletebutton.onclick = function(){
+        deletePoll(poll.id);
+      }
+      
+      buttondiv.appendChild(deletebutton);
+      
+    } else {
+      votebutton = document.createElement("button");
+      votebutton.className = "btn btn-success btn-sm";
+      votebutton.textContent = "Äänestä";
+
+      votebutton.onclick = function(){
+        votePoll(poll.id);
+      }
+      
+      buttondiv.appendChild(votebutton);
+
+    }
+
+    divbody.appendChild(buttondiv); 
+    maindiv.appendChild(divbody);
+    pollList.appendChild(maindiv);
+  });
+
+ 
+}
+
+function deletePoll(pollid) {
+  polls.forEach((poll, index) => {
+    if(poll.id === pollid){
+      polls.splice(index, 1);
+    }
+  });
+  updateUI();
+}
+
+function votePoll(pollid){
+   const selected = document.querySelector('input[name="vote_' + pollid + '"]:checked');
+
+   if(!selected){
+    alert("Valitse vaihtoehto jota äänestät")
+    return;
+   }
+  polls.forEach(poll => {
+    if (poll.id === pollid){
+      index = Number(selected.value);
+      poll.votes[index]++;
+    }
+
+    
+    
+  });
+
+  showResults(pollid);  
+
+}
+
+function showResults(pollid){
+  poll = null;
+  polls.forEach(p => {
+    if (p.id === pollid){
+      poll = p;
+    }
+  });
+
+  results = "<h6>Tulokset:</h6>"
+
+  poll.options.forEach((option, index) => {
+    if(poll.votes[index] > 1 ){
+      results += '<p class="small mb-1">' + option + ': <strong>' + poll.votes[index] + ' ääntä</strong></p>';
+    } else {
+      results += '<p class="small mb-1">' + option + ': <strong>' + poll.votes[index] + ' ääni</strong></p>';
+    }
+    
+  });
+
+  resultsdiv = document.getElementById("results_" + pollid);
+  resultsdiv.innerHTML = results;  
+  resultsdiv.classList.remove("d-none");
+}
+
+
+
+ 
+</script>
+
+</body>
+</html>
